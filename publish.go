@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -38,11 +39,13 @@ type PublishOptions struct {
 	// that can ack bound to the queue on the routing key
 	Immediate   bool
 	ContentType string
+	Type        string
 	// Transient or Persistent
 	DeliveryMode uint8
 	// Expiration time in ms that a message will expire from a queue.
 	// See https://www.rabbitmq.com/ttl.html#per-message-ttl-in-publishers
 	Expiration string
+	Timestamp  time.Time
 	Headers    Table
 }
 
@@ -72,6 +75,13 @@ func WithPublishOptionsContentType(contentType string) func(*PublishOptions) {
 	}
 }
 
+// WithPublishOptionsType returns a function that sets application-level message type
+func WithPublishOptionsType(messageType string) func(*PublishOptions) {
+	return func(options *PublishOptions) {
+		options.Type = messageType
+	}
+}
+
 // WithPublishOptionsPersistentDelivery sets the message to persist. Transient messages will
 // not be restored to durable queues, persistent messages will be restored to
 // durable queues and lost on non-durable queues during server restart. By default publishings
@@ -80,8 +90,13 @@ func WithPublishOptionsPersistentDelivery(options *PublishOptions) {
 	options.DeliveryMode = Persistent
 }
 
-// WithPublishOptionsExpiration returns a function that sets the expiry/TTL of a message. As per RabbitMq spec, it must be a
-// string value in milliseconds.
+// WithPublishOptionsTimestamp returns a function that sets application-level timestamp for the message
+func WithPublishOptionsTimestamp(timestamp time.Time) func(options *PublishOptions) {
+	return func(options *PublishOptions) {
+		options.Timestamp = timestamp
+	}
+}
+
 func WithPublishOptionsExpiration(expiration string) func(options *PublishOptions) {
 	return func(options *PublishOptions) {
 		options.Expiration = expiration
@@ -207,6 +222,8 @@ func (publisher *Publisher) Publish(
 		message.Body = data
 		message.Headers = tableToAMQPTable(options.Headers)
 		message.Expiration = options.Expiration
+		message.Timestamp = options.Timestamp
+		message.Type = options.Type
 
 		// Actual publish.
 		err := publisher.chManager.channel.Publish(
