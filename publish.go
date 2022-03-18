@@ -39,6 +39,7 @@ type PublishOptions struct {
 	// that can ack bound to the queue on the routing key
 	Immediate   bool
 	ContentType string
+	ReplyTo     string
 	Type        string
 	// Transient or Persistent
 	DeliveryMode uint8
@@ -72,6 +73,13 @@ func WithPublishOptionsImmediate(options *PublishOptions) {
 func WithPublishOptionsContentType(contentType string) func(*PublishOptions) {
 	return func(options *PublishOptions) {
 		options.ContentType = contentType
+	}
+}
+
+// WithPublishOptionsReplyTo returns a function that sets the reply-to message attrubute
+func WithPublishOptionsReplyTo(replyTo string) func(*PublishOptions) {
+	return func(options *PublishOptions) {
+		options.ReplyTo = replyTo
 	}
 }
 
@@ -224,6 +232,7 @@ func (publisher *Publisher) Publish(
 		message.Expiration = options.Expiration
 		message.Timestamp = options.Timestamp
 		message.Type = options.Type
+		message.ReplyTo = options.ReplyTo
 
 		// Actual publish.
 		err := publisher.chManager.channel.Publish(
